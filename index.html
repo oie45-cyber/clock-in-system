@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業智慧打卡系統 - GPS / GAS / Telegram 正式版</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i class="fa-solid me-0 fa-user-clock text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">雲端打卡系統</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">GPS・Google Form・GAS・Telegram 正式版</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- Direct link to original Google Form -->
+                <a id="googleFormLink" href="https://docs.google.com/forms/d/e/1FAIpQLSf0qaFmcq-UvVRYPYKS2Vqg5Hth-TSaVTJG1bjjd8KTwc9LWQ/viewform" target="_blank" rel="noopener noreferrer" class="text-xs text-sky-600 dark:text-sky-400 hover:underline hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/50">
+                    <i class="fa-solid fa-external-link text-xs"></i>
+                    開啟原始表單
+                </a>
+
+                <!-- Config Modal Button -->
+                <button id="openConfigBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition" title="系統與 Telegram 設定">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+
+                <!-- Dark mode toggle -->
+                <button id="themeToggleBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition" title="切換深色/淺色模式">
+                    <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- Notification Toast Banner -->
+        <div id="toast" class="hidden transform transition-all duration-300 translate-y-[-10px] opacity-0 p-4 rounded-xl shadow-lg border flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i id="toastIcon" class="fa-solid text-xl"></i>
+                <div>
+                    <h4 id="toastTitle" class="font-semibold text-sm"></h4>
+                    <p id="toastMessage" class="text-xs opacity-90"></p>
+                </div>
+            </div>
+            <button onclick="dismissToast()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left Column: Clock & Form -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Real-time Clock Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 text-center relative overflow-hidden">
+                    <div class="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium mb-3">
+                        <i class="fa-regular fa-calendar-days text-sky-500"></i>
+                        <span id="currentDateDisplay">----年--月--日 星期-</span>
+                    </div>
+
+                    <!-- Digital Time -->
+                    <div id="currentTimeDisplay" class="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white my-1 font-mono">
+                        00:00:00
+                    </div>
+
+                    <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 mt-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        系統時間已同步，點擊按鈕即可即時提交紀錄
+                    </p>
+                </div>
+
+                <!-- GPS Location Display Card -->
+                <div class="glass-card rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-location-crosshairs text-sky-500"></i>
+                            GPS 智慧定位狀態
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <label class="relative inline-flex items-center cursor-pointer text-xs text-slate-500 dark:text-slate-400">
+                                <input type="checkbox" id="autoGpsToggle" class="sr-only peer" checked onchange="toggleAutoGps()">
+                                <div class="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-slate-600 peer-checked:bg-sky-600"></div>
+                                <span class="ml-1.5 text-[11px]">自動獲取</span>
+                            </label>
+                            <button type="button" onclick="getLocation(true)" class="px-2 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 hover:bg-sky-200 rounded-lg text-[11px] font-medium transition flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-right text-[10px]"></i> 重新定位
+                            </button>
+                        </div>
+                    </div>
+                    <div id="gpsDetailBox" class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs space-y-1">
+                        <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                            <span class="font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-map-pin text-rose-500"></i> 當前位置：
+                            </span>
+                            <span id="gpsAddressDisplay" class="font-bold text-slate-800 dark:text-white truncate max-w-[200px] sm:max-w-[260px]">定位中...</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px] text-slate-400">
+                            <span id="gpsCoordsDisplay">經緯度: --</span>
+                            <a id="gpsMapLink" href="#" target="_blank" class="text-sky-500 hover:underline hidden flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> 地圖預覽
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-5">
+                    <h2 class="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                        <i class="fa-solid fa-id-card text-sky-500"></i>
+                        員工打卡登記
+                    </h2>
+
+                    <form id="punchForm" onsubmit="event.preventDefault();" class="space-y-4">
+                        <!-- Employee ID Input -->
+                        <div>
+                            <label for="employeeId" class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                                員工工號 <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <input
+                                    type="text"
+                                    id="employeeId"
+                                    name="employeeId"
+                                    required
+                                    placeholder="請輸入您的工號 (例如: EMP001)"
+                                    class="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-medium transition"
+                                    autocomplete="off"
+                                >
+                                <button type="button" id="clearEmpIdBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hidden">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1 flex justify-between">
+                                <span>輸入後選擇打卡類型即可自動發送</span>
+                                <span id="savedEmpHint" class="hidden text-sky-500 cursor-pointer hover:underline" onclick="useSavedId()">使用上次工號</span>
+                            </p>
+                        </div>
+
+                        <!-- Optional Remarks / Note -->
+                        <div>
+                            <label for="punchNote" class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                                打卡備註 <span class="text-slate-400 font-normal">(選填)</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="punchNote"
+                                placeholder="公務出差、居家辦公、加班說明等..."
+                                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-slate-900 dark:text-white placeholder-slate-400 text-sm transition"
+                            >
+                        </div>
+
+                        <!-- Action Buttons Grid -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-2">
+                                選擇打卡動作
+                            </label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <!-- 上班打卡 -->
+                                <button
+                                    type="button"
+                                    onclick="submitPunch('打卡', '上班')"
+                                    class="punch-btn group relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1"
+                                >
+                                    <i class="fa-solid fa-right-to-bracket text-lg group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm">上班打卡</span>
+                                    <span class="text-[10px] font-normal opacity-80">Clock In</span>
+                                </button>
+
+                                <!-- 下班打卡 -->
+                                <button
+                                    type="button"
+                                    onclick="submitPunch('下班', '下班')"
+                                    class="punch-btn group relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow-md shadow-rose-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1"
+                                >
+                                    <i class="fa-solid fa-right-from-bracket text-lg group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm">下班打卡</span>
+                                    <span class="text-[10px] font-normal opacity-80">Clock Out</span>
+                                </button>
+
+                                <!-- 外出/簽到 -->
+                                <button
+                                    type="button"
+                                    onclick="submitPunch('外出', '外出')"
+                                    class="punch-btn group relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1 col-span-2 sm:col-span-1"
+                                >
+                                    <i class="fa-solid fa-person-walking-luggage text-lg group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm">公出 / 外出</span>
+                                    <span class="text-[10px] font-normal opacity-80">Out of Office</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Auto-clear / Kiosk Mode Toggle -->
+                        <div class="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 text-xs">
+                            <label class="flex items-center space-x-2 cursor-pointer text-slate-600 dark:text-slate-400">
+                                <input type="checkbox" id="kioskModeToggle" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                <span>公用機模式 (打卡後自動清空工號)</span>
+                            </label>
+
+                            <span id="locationStatus" class="text-xs text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-shield-halved text-emerald-500"></i> GPS 自動附帶
+                            </span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 space-y-6">
+
+                <!-- Status Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-emerald-500"></i>
+                            系統安全連線狀態
+                        </h3>
+                        <span id="securityBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                            標準模式
+                        </span>
+                    </div>
+
+                    <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                        <div class="flex justify-between">
+                            <span>Google 表單:</span>
+                            <span class="font-mono text-slate-700 dark:text-slate-200 font-medium">1FAIpQLSf...LWQ</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Telegram 防護:</span>
+                            <span id="displayTgSecurity" class="font-semibold text-emerald-600 dark:text-emerald-400">基本模式</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>GAS 後端網址:</span>
+                            <span id="displayGasStatus" class="font-mono text-slate-400">未設定 (建議設定以完全隱藏Token)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Punch Records Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col h-[340px]">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-sky-500"></i>
+                            本日本機打卡紀錄
+                        </h3>
+                        <div class="flex items-center space-x-1">
+                            <span id="recordCountBadge" class="text-xs bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium">0 筆</span>
+                            <button onclick="clearLocalHistory()" class="p-1 text-slate-400 hover:text-rose-500 rounded transition" title="清除本機紀錄">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- History List Container -->
+                    <div id="historyList" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                        <div id="emptyHistory" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 my-8">
+                            <i class="fa-regular fa-clock text-3xl opacity-40"></i>
+                            <p>今天尚未進行任何打卡</p>
+                        </div>
+                    </div>
+
+                    <!-- Export CSV button -->
+                    <div class="pt-3 border-t border-slate-200 dark:border-slate-800 mt-2">
+                        <button onclick="exportHistoryCSV()" class="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-file-csv"></i>
+                            匯出今日本機打卡檔 (CSV)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <div id="configModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-sky-500"></i>
+                    系統對應與安全設定
+                </h3>
+                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- GAS Webhook Safe Proxy Section -->
+            <div class="p-3.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-200 dark:border-sky-800/50 space-y-2">
+                <label class="font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5 text-xs">
+                    <i class="fa-solid fa-user-shield text-sky-500"></i>
+                    🔒 Google Apps Script (GAS) Web App 網址 (隱藏 Token 最佳解)
+                </label>
+                <input
+                    type="text"
+                    id="configGasUrl"
+                    placeholder="例如: https://script.google.com/macros/s/AKfycb.../exec"
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                >
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    💡 填入 GAS 部署網址後，系統將由 Google 後端伺服器發送 Telegram 推播，**前端將 100% 不留任何 Bot Token 痕跡**！
+                </p>
+            </div>
+
+            <form id="configForm" onsubmit="saveConfig(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Google 表單 ID (Form ID)
+                    </label>
+                    <input
+                        type="text"
+                        id="configFormId"
+                        required
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                    >
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            打卡動作 Entry
+                        </label>
+                        <input
+                            type="text"
+                            id="configActionEntry"
+                            required
+                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                        >
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            工號欄位 Entry
+                        </label>
+                        <input
+                            type="text"
+                            id="configEmpEntry"
+                            required
+                            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                        >
+                    </div>
+                </div>
+
+
+                <!-- GPS / Geofence Section -->
+                <div class="pt-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                    <label class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-location-crosshairs text-rose-500"></i>
+                        GPS 打卡範圍設定
+                    </label>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400">
+                        填入公司/指定打卡地點的經緯度後，可限制員工必須在指定半徑內才能打卡。
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[11px] mb-1">指定緯度 Latitude</label>
+                            <input type="number" step="any" id="configOfficeLat" placeholder="例如 24.150000"
+                                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[11px] mb-1">指定經度 Longitude</label>
+                            <input type="number" step="any" id="configOfficeLng" placeholder="例如 120.680000"
+                                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 items-end">
+                        <div>
+                            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[11px] mb-1">允許半徑（公尺）</label>
+                            <input type="number" min="10" step="10" id="configAllowedRadius" value="200"
+                                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs">
+                        </div>
+                        <label class="flex items-center gap-2 pb-2 text-[11px] text-slate-600 dark:text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="configRequireGps" checked class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                            必須取得 GPS 才能打卡
+                        </label>
+                    </div>
+                    <button type="button" onclick="useCurrentPositionAsOffice()"
+                        class="w-full py-2 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 rounded-lg font-medium transition text-[11px]">
+                        <i class="fa-solid fa-map-pin mr-1"></i> 將目前 GPS 設為指定打卡地點
+                    </button>
+                </div>
+
+                <!-- Telegram Section -->
+                <div class="pt-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                            <i class="fa-brands fa-telegram text-sky-500 text-sm"></i>
+                            Telegram 直連設定 (若未填 GAS 網址時使用)
+                        </label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="configTgEnabled" class="sr-only peer" checked>
+                            <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-sky-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[11px] mb-1">
+                                Telegram Bot Token
+                            </label>
+                            <input
+                                type="text"
+                                id="configTgToken"
+                                placeholder="8616742217:AAFX..."
+                                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[11px] mb-1">
+                                Telegram Chat ID
+                            </label>
+                            <div class="flex gap-2">
+                                <input
+                                    type="text"
+                                    id="configTgChatId"
+                                    class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 font-mono text-xs"
+                                >
+                                <button type="button" onclick="testTgNotification()" class="px-2.5 py-1.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 rounded-lg font-medium transition text-[11px] shrink-0">
+                                    測試發送
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <button type="button" onclick="resetConfigToDefault()" class="px-3 py-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                        恢復預設值
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-xl transition">
+                        儲存設定
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden Submit Iframe -->
+    <iframe name="hidden_iframe" id="hidden_iframe" class="hidden"></iframe>
+
+    <script>
+        // Default System Configuration
+        const DEFAULT_CONFIG = {
+            formId: '1FAIpQLSf0qaFmcq-UvVRYPYKS2Vqg5Hth-TSaVTJG1bjjd8KTwc9LWQ',
+            actionEntry: 'entry.1315502566',
+            empEntry: 'entry.123456789',
+            noteEntry: 'entry.987654321',
+            // GPS / 打卡範圍設定：請在下方填入公司的經緯度與允許半徑
+            officeLat: '',
+            officeLng: '',
+            allowedRadiusMeters: 200,
+            requireGps: true,
+            gasUrl: 'https://script.google.com/macros/s/AKfycbyBGz4ev5YIYqv3SGxKJFdJ5ruTMbJYgjkq7dyB3a6dQQuSbFT4RaW0yfoRk9L_vhqB/exec', 
+            telegramEnabled: true,
+            telegramToken: '',
+            telegramChatId: ''
+        };
+
+        let config = { ...DEFAULT_CONFIG };
+        let punchHistory = [];
+        let currentGeoLocation = '';
+        let currentAddress = '';
+        let currentMapUrl = '';
+        let currentLat = null;
+        let currentLng = null;
+        let currentAccuracy = null;
+        let currentDistanceMeters = null;
+        let audioCtx = null;
+
+        window.onload = function () {
+            loadConfig();
+            loadHistory();
+            initClock();
+            setupEventListeners();
+            updateFormStatusDisplay();
+
+            // Auto fetch location on load
+            if (document.getElementById('autoGpsToggle').checked) {
+                getLocation(false);
+            }
+        };
+
+        function initClock() {
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            const dayName = days[now.getDay()];
+
+            const currentDateEl = document.getElementById('currentDateDisplay');
+            if (currentDateEl) {
+                currentDateEl.textContent = `${year}年${month}月${date}日 星期${dayName}`;
+            }
+
+            const currentTimeEl = document.getElementById('currentTimeDisplay');
+            if (currentTimeEl) {
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                currentTimeEl.textContent = `${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        function setupEventListeners() {
+            const empInput = document.getElementById('employeeId');
+            const clearBtn = document.getElementById('clearEmpIdBtn');
+            const savedHint = document.getElementById('savedEmpHint');
+
+            if (empInput && clearBtn) {
+                empInput.addEventListener('input', () => {
+                    if (empInput.value.trim().length > 0) {
+                        clearBtn.classList.remove('hidden');
+                    } else {
+                        clearBtn.classList.add('hidden');
+                    }
+                });
+
+                clearBtn.addEventListener('click', () => {
+                    empInput.value = '';
+                    clearBtn.classList.add('hidden');
+                    empInput.focus();
+                });
+            }
+
+            const lastEmpId = localStorage.getItem('last_emp_id');
+            if (lastEmpId && savedHint) {
+                savedHint.classList.remove('hidden');
+            }
+
+            // Dark mode toggle button listener
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                    const isDark = document.documentElement.classList.contains('dark');
+                    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                });
+            }
+
+            // Apply system theme preference on load
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            // Open config modal button listener
+            const openConfigBtn = document.getElementById('openConfigBtn');
+            if (openConfigBtn) {
+                openConfigBtn.addEventListener('click', openConfigModal);
+            }
+        }
+
+        function useSavedId() {
+            const lastEmpId = localStorage.getItem('last_emp_id');
+            if (lastEmpId) {
+                const empInput = document.getElementById('employeeId');
+                const clearBtn = document.getElementById('clearEmpIdBtn');
+                if (empInput) {
+                    empInput.value = lastEmpId;
+                    if (clearBtn) clearBtn.classList.remove('hidden');
+                    showToast('info', '已載入上次工號', `工號: ${lastEmpId}`);
+                }
+            }
+        }
+
+        function toggleAutoGps() {
+            const isChecked = document.getElementById('autoGpsToggle').checked;
+            if (isChecked) {
+                getLocation(true);
+            }
+        }
+
+        async function getLocation(showNotification = true) {
+            const statusEl = document.getElementById('locationStatus');
+            const addressDisplay = document.getElementById('gpsAddressDisplay');
+            const coordsDisplay = document.getElementById('gpsCoordsDisplay');
+            const mapLink = document.getElementById('gpsMapLink');
+
+            addressDisplay.textContent = '定位中...';
+            if (showNotification) showToast('info', '定位中', '正在獲取高精度 GPS 位置與中文地址...');
+
+            if (!navigator.geolocation) {
+                await fetchIpLocation();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const lat = pos.coords.latitude.toFixed(6);
+                    const lng = pos.coords.longitude.toFixed(6);
+                    currentLat = Number(pos.coords.latitude);
+                    currentLng = Number(pos.coords.longitude);
+                    currentAccuracy = Math.round(pos.coords.accuracy);
+                    currentGeoLocation = `GPS (${lat}, ${lng})`;
+                    currentMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                    coordsDisplay.textContent = `經緯度: ${lat}, ${lng} (精確度: ±${Math.round(pos.coords.accuracy)}m)`;
+                    mapLink.href = currentMapUrl;
+                    mapLink.classList.remove('hidden');
+                    updateGeofenceStatus();
+
+                    // Reverse geocoding for human-readable address
+                    try {
+                        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`);
+                        const geoData = await res.json();
+                        
+                        const city = geoData.principalSubdivision || geoData.city || '';
+                        const district = geoData.locality || geoData.localityInfo?.administrative?.[2]?.name || '';
+                        const street = geoData.localityInfo?.informative?.[0]?.name || geoData.lookupSource || '';
+                        
+                        currentAddress = `${city}${district} ${street}`.trim() || `${lat}, ${lng}`;
+                        addressDisplay.textContent = currentAddress;
+                        
+                        if (statusEl) statusEl.textContent = 'GPS 定位已完成';
+                        if (showNotification) showToast('success', '定位成功', `📍 ${currentAddress}`);
+                    } catch (e) {
+                        currentAddress = `${lat}, ${lng}`;
+                        addressDisplay.textContent = currentAddress;
+                        if (statusEl) statusEl.textContent = 'GPS 已定位 (無地址解析)';
+                    }
+                },
+                async (err) => {
+                    console.warn('GPS failed:', err);
+                    currentLat = null;
+                    currentLng = null;
+                    currentAccuracy = null;
+                    currentDistanceMeters = null;
+                    currentGeoLocation = '';
+                    currentAddress = '';
+                    addressDisplay.textContent = 'GPS 定位失敗';
+                    coordsDisplay.textContent = '請開啟瀏覽器定位權限後重新定位';
+                    mapLink.classList.add('hidden');
+                    if (statusEl) statusEl.textContent = 'GPS 尚未取得';
+                    showToast('error', 'GPS 定位失敗', getGeoErrorMessage(err));
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+            );
+        }
+
+
+        function getGeoErrorMessage(err) {
+            if (!err) return '請確認裝置 GPS 與瀏覽器定位權限。';
+            if (err.code === 1) return '你拒絕了定位權限，請到瀏覽器設定允許此網站使用位置。';
+            if (err.code === 2) return '目前無法取得位置，請開啟裝置定位/GPS後重試。';
+            if (err.code === 3) return '定位逾時，請移到訊號較佳處後重新定位。';
+            return '請確認裝置 GPS 與瀏覽器定位權限。';
+        }
+
+        function haversineDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const toRad = d => d * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function hasOfficeLocation() {
+            return Number.isFinite(Number(config.officeLat)) &&
+                   Number.isFinite(Number(config.officeLng)) &&
+                   String(config.officeLat).trim() !== '' &&
+                   String(config.officeLng).trim() !== '';
+        }
+
+        function updateGeofenceStatus() {
+            const statusEl = document.getElementById('locationStatus');
+            if (currentLat === null || currentLng === null) {
+                currentDistanceMeters = null;
+                if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> GPS 尚未取得';
+                return;
+            }
+
+            if (!hasOfficeLocation()) {
+                currentDistanceMeters = null;
+                if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-location-dot text-sky-500"></i> GPS 已取得';
+                return;
+            }
+
+            currentDistanceMeters = haversineDistance(
+                currentLat, currentLng,
+                Number(config.officeLat), Number(config.officeLng)
+            );
+
+            const radius = Number(config.allowedRadiusMeters) || 200;
+            if (currentDistanceMeters <= radius) {
+                if (statusEl) statusEl.innerHTML =
+                    `<i class="fa-solid fa-circle-check text-emerald-500"></i> 範圍內 ${Math.round(currentDistanceMeters)}m`;
+            } else {
+                if (statusEl) statusEl.innerHTML =
+                    `<i class="fa-solid fa-circle-xmark text-rose-500"></i> 超出範圍 ${Math.round(currentDistanceMeters)}m`;
+            }
+        }
+
+        function validateGpsBeforePunch() {
+            if (config.requireGps !== false && (currentLat === null || currentLng === null)) {
+                showToast('error', '尚未取得 GPS', '請先按「重新定位」，定位成功後才能打卡。');
+                return false;
+            }
+
+            if (hasOfficeLocation()) {
+                updateGeofenceStatus();
+                const radius = Number(config.allowedRadiusMeters) || 200;
+                if (currentDistanceMeters !== null && currentDistanceMeters > radius) {
+                    showToast('error', '超出打卡範圍',
+                        `目前距離指定地點約 ${Math.round(currentDistanceMeters)} 公尺，允許範圍為 ${radius} 公尺。`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        async function fetchIpLocation() {
+            const addressDisplay = document.getElementById('gpsAddressDisplay');
+            const coordsDisplay = document.getElementById('gpsCoordsDisplay');
+            const mapLink = document.getElementById('gpsMapLink');
+
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                const lat = data.latitude;
+                const lng = data.longitude;
+
+                currentGeoLocation = `IP定位 (${lat}, ${lng})`;
+                currentAddress = `${data.city || ''} ${data.region || ''} (IP備用)`.trim();
+                currentMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                addressDisplay.textContent = currentAddress;
+                coordsDisplay.textContent = `經緯度: ${lat}, ${lng} (IP定位)`;
+                mapLink.href = currentMapUrl;
+                mapLink.classList.remove('hidden');
+
+                showToast('info', '使用 IP 備用定位', `位置: ${currentAddress}`);
+            } catch (e) {
+                currentGeoLocation = '';
+                currentAddress = '';
+                addressDisplay.textContent = '無法獲取定位';
+                coordsDisplay.textContent = '請檢查瀏覽器定位權限';
+                mapLink.classList.add('hidden');
+                showToast('error', '定位失敗', '請確定已開啟 GPS 與定位權限');
+            }
+        }
+
+        async function submitPunch(actionName, defaultCategory) {
+            const empInput = document.getElementById('employeeId');
+            const empId = empInput.value.trim();
+
+            if (!empId) {
+                showToast('error', '請輸入工號', '請先填寫您的員工工號再點擊打卡！');
+                empInput.focus();
+                return;
+            }
+
+            if (!validateGpsBeforePunch()) return;
+
+            const noteInput = document.getElementById('punchNote');
+            let combinedNote = noteInput.value.trim();
+            
+            // Attach location info to Google Form Note
+            let locString = currentAddress ? `📍 ${currentAddress} (${currentGeoLocation})` : currentGeoLocation;
+            if (currentAccuracy !== null) locString += ` 精確度±${currentAccuracy}m`;
+            if (currentDistanceMeters !== null) locString += ` 距指定地點${Math.round(currentDistanceMeters)}m`;
+            if (currentMapUrl) locString += ` ${currentMapUrl}`;
+            if (locString) {
+                combinedNote = combinedNote ? `${combinedNote} | ${locString}` : locString;
+            }
+
+            const timestamp = new Date();
+            const timeString = timestamp.toLocaleTimeString('zh-TW', { hour12: false });
+
+            // If GAS Webhook is configured, use secure GAS backend submission!
+            if (config.gasUrl) {
+                try {
+                    showToast('info', '傳送中...', '正透過 GAS 安全伺服器提交打卡');
+                    await fetch(config.gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            empId: empId,
+                            action: actionName,
+                            note: combinedNote,
+                            latitude: currentLat,
+                            longitude: currentLng,
+                            accuracy: currentAccuracy,
+                            mapUrl: currentMapUrl,
+                            distanceMeters: currentDistanceMeters,
+                            time: `${timestamp.toLocaleDateString('zh-TW')} ${timeString}`
+                        })
+                    });
+                } catch (e) {
+                    console.error('GAS Submission Error:', e);
+                }
+            } else {
+                // Default Standard Submission via hidden iframe form POST
+                const formUrl = `https://docs.google.com/forms/d/e/${config.formId}/formResponse`;
+                const iframeForm = document.createElement('form');
+                iframeForm.method = 'POST';
+                iframeForm.action = formUrl;
+                iframeForm.target = 'hidden_iframe';
+                iframeForm.style.display = 'none';
+
+                const actionInput = document.createElement('input');
+                actionInput.name = config.actionEntry;
+                actionInput.value = actionName;
+                iframeForm.appendChild(actionInput);
+
+                if (config.empEntry) {
+                    const empField = document.createElement('input');
+                    empField.name = config.empEntry;
+                    empField.value = empId;
+                    iframeForm.appendChild(empField);
+                }
+
+                if (config.noteEntry && combinedNote) {
+                    const noteField = document.createElement('input');
+                    noteField.name = config.noteEntry;
+                    noteField.value = combinedNote;
+                    iframeForm.appendChild(noteField);
+                }
+
+                document.body.appendChild(iframeForm);
+                iframeForm.submit();
+                setTimeout(() => document.body.removeChild(iframeForm), 1000);
+
+                // Send Direct Telegram Notification if enabled (and not using GAS)
+                sendTelegramNotification(empId, actionName, combinedNote);
+            }
+
+            // Audio Feedback
+            playBeepSound();
+
+            // Local Record Log
+            const record = {
+                id: Date.now(),
+                empId: empId,
+                action: actionName,
+                time: timeString,
+                date: timestamp.toLocaleDateString('zh-TW'),
+                note: combinedNote
+            };
+
+            punchHistory.unshift(record);
+            saveHistory();
+            renderHistory();
+
+            localStorage.setItem('last_emp_id', empId);
+            document.getElementById('savedEmpHint').classList.remove('hidden');
+
+            showToast('success', `${actionName}成功！`, `工號: ${empId} | 時間: ${timeString}`);
+
+            if (document.getElementById('kioskModeToggle').checked) {
+                empInput.value = '';
+                document.getElementById('clearEmpIdBtn').classList.add('hidden');
+                empInput.focus();
+            }
+            noteInput.value = '';
+        }
+
+        // Configuration Helpers
+        function loadConfig() {
+            const savedConfig = localStorage.getItem('google_form_punch_config');
+            if (savedConfig) {
+                try {
+                    config = { ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) };
+                } catch (e) {
+                    config = { ...DEFAULT_CONFIG };
+                }
+            } else {
+                config = { ...DEFAULT_CONFIG };
+            }
+        }
+
+        function saveConfig(e) {
+            e.preventDefault();
+            config.gasUrl = document.getElementById('configGasUrl').value.trim();
+            config.formId = document.getElementById('configFormId').value.trim() || DEFAULT_CONFIG.formId;
+            config.actionEntry = document.getElementById('configActionEntry').value.trim() || DEFAULT_CONFIG.actionEntry;
+            config.empEntry = document.getElementById('configEmpEntry').value.trim() || DEFAULT_CONFIG.empEntry;
+            
+            config.telegramEnabled = document.getElementById('configTgEnabled').checked;
+            config.telegramToken = document.getElementById('configTgToken').value.trim();
+            config.telegramChatId = document.getElementById('configTgChatId').value.trim();
+
+            localStorage.setItem('google_form_punch_config', JSON.stringify(config));
+            updateFormStatusDisplay();
+            closeConfigModal();
+            showToast('success', '設定已更新', '配置已順利儲存');
+        }
+
+        function resetConfigToDefault() {
+            config = { ...DEFAULT_CONFIG };
+            localStorage.removeItem('google_form_punch_config');
+            openConfigModal();
+            updateFormStatusDisplay();
+            showToast('info', '已恢復預設值', '已載入預設數值');
+        }
+
+        function updateFormStatusDisplay() {
+            const securityBadge = document.getElementById('securityBadge');
+            const displayTgSecurity = document.getElementById('displayTgSecurity');
+            const displayGasStatus = document.getElementById('displayGasStatus');
+
+            if (config.gasUrl) {
+                securityBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> GAS 後端安全隱藏模式`;
+                securityBadge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
+                displayTgSecurity.textContent = "100% 後端安全隱藏";
+                displayGasStatus.textContent = config.gasUrl.substring(0, 30) + "...";
+            } else {
+                securityBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span> 直連模式`;
+                securityBadge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+                displayTgSecurity.textContent = "基本模式 (建議改用 GAS 後端)";
+                displayGasStatus.textContent = "未設定 (點擊⚙️設定貼上 GAS 網址)";
+            }
+        }
+
+        function openConfigModal() {
+            document.getElementById('configGasUrl').value = config.gasUrl || '';
+            document.getElementById('configFormId').value = config.formId;
+            document.getElementById('configActionEntry').value = config.actionEntry;
+            document.getElementById('configEmpEntry').value = config.empEntry;
+            
+            document.getElementById('configTgEnabled').checked = config.telegramEnabled !== false;
+            document.getElementById('configTgToken').value = config.telegramToken || '';
+            document.getElementById('configTgChatId').value = config.telegramChatId || '';
+            
+            document.getElementById('configModal').classList.remove('hidden');
+        }
+
+        function useCurrentPositionAsOffice() {
+            if (currentLat === null || currentLng === null) {
+                showToast('error', '尚未取得 GPS', '請先關閉設定視窗並按「重新定位」。');
+                return;
+            }
+            document.getElementById('configOfficeLat').value = currentLat.toFixed(6);
+            document.getElementById('configOfficeLng').value = currentLng.toFixed(6);
+            showToast('success', '已帶入目前位置', '儲存設定後，此位置會成為打卡中心點。');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.add('hidden');
+        }
+
+        // Send Telegram Notification Direct
+        async function sendTelegramNotification(empId, action, note) {
+            if (!config.telegramEnabled || !config.telegramToken || !config.telegramChatId) return;
+
+            const now = new Date();
+            let locationInfo = '';
+            if (currentAddress) {
+                locationInfo = `\n📍 <b>位置：</b> ${currentAddress}` + (currentMapUrl ? ` (<a href="${currentMapUrl}">開啟地圖</a>)` : '');
+            }
+
+            const message = `🚨 <b>員工打卡即時通知</b>\n\n` +
+                            `👤 <b>工號：</b> <code>${empId}</code>\n` +
+                            `📌 <b>動作：</b> ${action}\n` +
+                            `🕒 <b>時間：</b> ${now.toLocaleTimeString('zh-TW', { hour12: false })} (${now.toLocaleDateString('zh-TW')})` +
+                            locationInfo +
+                            (note ? `\n📝 <b>備註：</b> ${note}` : '') +
+                            `\n\n☁️ <i>已同步提交紀錄</i>`;
+
+            try {
+                await fetch(`https://api.telegram.org/bot${config.telegramToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: config.telegramChatId,
+                        text: message,
+                        parse_mode: 'HTML',
+                        disable_web_page_preview: false
+                    })
+                });
+            } catch (err) {
+                console.error('Telegram push failed:', err);
+            }
+        }
+
+        async function testTgNotification() {
+            const token = document.getElementById('configTgToken').value.trim();
+            const chatId = document.getElementById('configTgChatId').value.trim();
+
+            if (!token || !chatId) {
+                showToast('error', '請填寫完整', '需要 Token 與 Chat ID');
+                return;
+            }
+
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: '✅ <b>Telegram 連線測試成功！</b>',
+                        parse_mode: 'HTML'
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) showToast('success', '測試成功！', '已收到 Telegram 訊息');
+                else showToast('error', '失敗', data.description);
+            } catch (err) {
+                showToast('error', '連線失敗', '請確認 Token 與 Chat ID');
+            }
+        }
+
+        // Local History Management
+        function loadHistory() {
+            const todayStr = new Date().toLocaleDateString('zh-TW');
+            const saved = localStorage.getItem('punch_history_data');
+            if (saved) {
+                try {
+                    punchHistory = JSON.parse(saved).filter(item => item.date === todayStr);
+                } catch (e) {
+                    punchHistory = [];
+                }
+            }
+            renderHistory();
+        }
+
+        function saveHistory() {
+            localStorage.setItem('punch_history_data', JSON.stringify(punchHistory));
+        }
+
+        function renderHistory() {
+            const listContainer = document.getElementById('historyList');
+            document.getElementById('recordCountBadge').textContent = `${punchHistory.length} 筆`;
+
+            if (punchHistory.length === 0) {
+                listContainer.innerHTML = `
+                    <div id="emptyHistory" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 my-8">
+                        <i class="fa-regular fa-clock text-3xl opacity-40"></i>
+                        <p>今天尚未進行任何打卡</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = punchHistory.map(item => {
+                let badgeColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+                if (item.action.includes('下班')) badgeColor = 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+                else if (item.action.includes('外出')) badgeColor = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+
+                return `
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-900 dark:text-white font-mono text-xs">${item.empId}</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}">${item.action}</span>
+                            </div>
+                            ${item.note ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1"><i class="fa-solid fa-comment-dots text-[9px]"></i> ${item.note}</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono font-bold text-sky-600 dark:text-sky-400 text-xs">${item.time}</div>
+                            <div class="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
+                                <i class="fa-solid fa-cloud-check text-[9px]"></i> 已記錄
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearLocalHistory() {
+            if (punchHistory.length === 0) return;
+            punchHistory = [];
+            saveHistory();
+            renderHistory();
+            showToast('info', '紀錄已清空', '已移除本機今日打卡紀錄');
+        }
+
+        function exportHistoryCSV() {
+            if (punchHistory.length === 0) {
+                showToast('error', '無法匯出', '目前尚無今日打卡紀錄');
+                return;
+            }
+
+            let csvContent = "\uFEFF日期,時間,工號,動作,備註\n";
+            punchHistory.forEach(row => {
+                csvContent += `${row.date},${row.time},${row.empId},${row.action},"${(row.note || '').replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `打卡紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('success', '匯出成功', '已下載今日打卡紀錄 CSV 檔案');
+        }
+
+        function playBeepSound() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            } catch (e) {}
+        }
+
+        function showToast(type, title, message) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const titleEl = document.getElementById('toastTitle');
+            const msgEl = document.getElementById('toastMessage');
+
+            toast.className = "p-4 rounded-xl shadow-lg border flex items-center justify-between transition-all duration-300 z-50 ";
+
+            if (type === 'success') {
+                toast.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+                icon.className = "fa-solid fa-circle-check text-xl";
+            } else if (type === 'error') {
+                toast.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+                icon.className = "fa-solid fa-circle-xmark text-xl";
+            } else {
+                toast.classList.add('bg-sky-500', 'text-white', 'border-sky-600');
+                icon.className = "fa-solid fa-circle-info text-xl";
+            }
+
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.remove('translate-y-[-10px]', 'opacity-0'), 10);
+
+            if (window.toastTimer) clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(dismissToast, 4000);
+        }
+
+        function dismissToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('translate-y-[-10px]', 'opacity-0');
+            setTimeout(() => toast.classList.add('hidden'), 300);
+        }
+    </script>
+</body>
+</html>
