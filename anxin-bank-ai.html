@@ -4,26 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>安心商業銀行 AI 導入規劃與智慧金融平台</title>
-<style>body{font-family:Arial,'Noto Sans TC',sans-serif;background:#0f172a;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.box{text-align:center;padding:32px}.spin{width:34px;height:34px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}</style>
+<style>
+html,body{margin:0;min-height:100%;background:#0f172a;color:#fff;font-family:Arial,'Noto Sans TC',sans-serif}.box{min-height:100vh;display:grid;place-items:center;text-align:center;padding:32px;box-sizing:border-box}.spin{width:34px;height:34px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}small{color:#94a3b8;line-height:1.6}
+</style>
 </head>
 <body>
-<div class="box"><div class="spin"></div><div id="status">安心商業銀行 AI 專題頁面載入中…</div></div>
+<div class="box"><div><div class="spin"></div><div id="status">安心商業銀行 AI 專題頁面載入中…</div></div></div>
 <script>
 (async()=>{
+  const status=document.getElementById('status');
   try{
-    const files=[0,1,2,3,4,5].map(i=>`anxin-bank-ai-data/part${i}.txt`);
-    const parts=await Promise.all(files.map(async f=>{
-      const r=await fetch(f,{cache:'no-store'});
-      if(!r.ok) throw new Error(`載入 ${f} 失敗`);
-      return await r.text();
-    }));
+    const base='https://raw.githubusercontent.com/oie45-cyber/clock-in-system/main/anxin-bank-ai-data/';
+    const files=[0,1,2,3,4,5].map(i=>base+`part${i}.txt`);
+    const parts=[];
+    for(let i=0;i<files.length;i++){
+      status.textContent=`安心商業銀行 AI 專題頁面載入中… ${i+1}/6`;
+      const r=await fetch(files[i]);
+      if(!r.ok) throw new Error(`資料 ${i+1} 載入失敗（HTTP ${r.status}）`);
+      parts.push(await r.text());
+    }
     const b64=parts.join('').replace(/\s+/g,'');
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    if(!('DecompressionStream' in window)) throw new Error('瀏覽器版本過舊，請更新 Chrome、Edge 或 Safari');
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     const html=await new Response(stream).text();
     document.open();document.write(html);document.close();
   }catch(e){
-    document.getElementById('status').innerHTML='頁面載入失敗，請使用最新版 Chrome、Edge 或 Safari 重新開啟。<br><small>'+e.message+'</small>';
+    status.innerHTML='頁面載入失敗。<br><small>'+String(e.message||e)+'<br>請重新整理頁面；若仍無法開啟，請將畫面截圖回傳。</small>';
     console.error(e);
   }
 })();
